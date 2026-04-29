@@ -31,12 +31,14 @@ Status: Design phase. No hardware purchased yet.
 | `architecture.md` | Block diagram, frequency plan options, LO strategy, direct sampling vs downconversion, phase coherence | Discussing RF chain design |
 | `components.md` | BOM for Phase 1 and Phase 2, part numbers, suppliers, pricing | Discussing parts, procurement, cost |
 | `sampling-theory.md` | Nyquist zones, analog input bandwidth, IQ vs real sampling — critical distinctions | Discussing sampling, bandwidth, frequency planning |
+| `fmcw-amplifier.md` | FMCW radar amplifier design at 5.8 GHz and 10.5 GHz — covering critical PA/LNA performance metrics, recommended ICs and PCB modules, and 8TX/8RX channel cost breakdowns for both discrete and modular approaches |
 
 ### signal-processing/
 | File | Contents | Load when... |
 |---|---|---|
 | `pipeline.md` | DDC/DUC, decimation, 3D FFT, cuFFT, GPU streaming | Discussing DSP pipeline, processing chain |
 | `radar-theory.md` | Dynamic range, ADC resolution, coherent processing gain, ENOB, radar waveforms | Discussing radar performance, dynamic range |
+| `fdm-processing` | Waveform orthogonality and range resolution recovery via Frequency Division Multiplexing in MIMO FMCW radar systems |
 
 ### regulatory/
 | File | Contents | Load when... |
