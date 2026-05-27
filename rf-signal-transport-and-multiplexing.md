@@ -6,6 +6,36 @@
 
 ---
 
+## Index
+
+### Document Sections
+- [1. The Transport Problem in MIMO Radar](#1-the-transport-problem-in-mimo-radar)
+- [2. Traditional RF Transport](#2-traditional-rf-transport)
+- [3. Intermediate Architecture — Analog Dechirp with Coaxial Transport](#3-intermediate-architecture--analog-dechirp-with-coaxial-transport)
+- [4. Photonic Channelisation via Optical Frequency Comb](#4-photonic-channelisation-via-optical-frequency-comb)
+- [5. ENOB Implications: Analog vs Digital Dechirping](#5-enob-implications-analog-vs-digital-dechirping)
+- [6. Photonic Dechirping](#6-photonic-dechirping)
+- [7. Dynamic Range in the Photonic Link](#7-dynamic-range-in-the-photonic-link)
+- [8. Lower-Cost Alternative: Analog Dechirp + SCM over Fibre](#8-lower-cost-alternative-analog-dechirp--scm-over-fibre-stage-2)
+- [9. Coaxial SCM — All Benefits of Stage 2 Without Photonics](#9-coaxial-scm--all-benefits-of-stage-2-without-photonics-stage-175)
+- [10. Architecture Comparison Summary](#10-architecture-comparison-summary)
+- [11. Staged Development Roadmap](#11-staged-development-roadmap)
+- [12. Key References and Technology Suppliers](#12-key-references-and-technology-suppliers)
+
+### Development Stages at a Glance
+
+| Stage | Name | RX | ENOB | Key limitation | Section |
+|---|---|---|---|---|---|
+| 1 | Direct RF sampling, digital dechirp | 8 | ~7 bits | ADC jitter at 5.8 GHz limits dynamic range to ~44 dB | [§2](#2-traditional-rf-transport) |
+| 1.5A | Analog dechirp, mixer at ZCU208 rack | 8 | ~11–12 bits | Antennas must be within ~10 m of ZCU208 | [§3](#3-intermediate-architecture--analog-dechirp-with-coaxial-transport) |
+| 1.5B | Analog dechirp, mixer at antenna, coax return | 8 | ~11–12 bits | Antennas limited to ~50 m from ZCU208; one ADC per antenna | [§3](#3-intermediate-architecture--analog-dechirp-with-coaxial-transport) |
+| 1.75 | Analog dechirp + coaxial SCM multiplexing | 64 | ~11–12 bits | Antennas limited to ~50 m; susceptible to EM interference on cables | [§9](#9-coaxial-scm--all-benefits-of-stage-2-without-photonics-stage-175) |
+| 2 | Analog dechirp + SCM + Radio over Fibre | 64 | ~11–12 bits | Requires photonic components at antenna and central unit | [§8](#8-lower-cost-alternative-analog-dechirp--scm-over-fibre-stage-2) |
+| 3 | OFC photonic channelisation | 64 | ~11–12 bits | High cost; EOM required at every antenna | [§4](#4-photonic-channelisation-via-optical-frequency-comb) |
+| 3+ | OFC + TFLN integrated modulators | 64+ | ~11–12 bits | Dependent on TFLN commercial availability | [§4](#4-photonic-channelisation-via-optical-frequency-comb) |
+
+---
+
 ## 1. The Transport Problem in MIMO Radar
 
 In a MIMO FMCW radar, the received signal from each antenna element must reach the ADC coherently — meaning phase relationships between channels must be preserved. For a physically distributed antenna array (antennas separated from the processing unit), this creates a transport challenge that scales directly with channel count.
@@ -16,7 +46,8 @@ Two architectures are compared:
 
 - **Traditional with digital dechirp:** One coaxial cable per channel, ADC samples raw RF, dechirp in FPGA. Simple but ENOB-limited.
 - **Traditional with analog dechirp:** Dechirp mixer moves to the antenna or ZCU208 rack; ADC samples beat frequency, recovering full dynamic range. No photonics required.
-- **Photonic SCM over fibre:** Multiple antenna channels multiplexed onto a single optical fibre with analog dechirp at antenna. Scales to 64 channels using 8 ADCs with unlimited physical separation.
+- **Coaxial SCM multiplexing:** Beat signals from 8 antennas are frequency-offset and combined onto one coax return cable per group. Scales to 64 channels with 8 ADCs. No photonics, no fibre. Distance-limited to ~50 m.
+- **Photonic SCM over fibre:** Identical to coaxial SCM but with fibre replacing coax. Unlimited separation, full EM immunity.
 - **Photonic OFC channelisation:** Full photonic link with no RF mixing at antenna. Maximum capability and elegance at the highest cost.
 
 ---
@@ -613,42 +644,133 @@ This is approximately **3–4× cheaper** than the OFC channelisation architectu
 
 ---
 
-## 9. Architecture Comparison Summary
+## 9. Coaxial SCM — All Benefits of Stage 2 Without Photonics (Stage 1.75)
 
-| Property | Stage 1: Direct RF | Stage 1.5A: Analog (compact) | Stage 1.5B: Analog (distributed) | Stage 2: SCM + RoF | Stage 3: OFC |
-|---|---|---|---|---|---|
-| RX channels | 8 | 8 | 8 | 64 | 64 |
-| ADC count | 8 | 8 | 8 | 8 | 8 |
-| Link medium | Coax (RF) | Coax (RF + beat) | Coax (ref + beat) | Fibre + coax | Fibre only |
-| Max practical separation | ~5 m | ~10 m | ~50 m | Unlimited | Unlimited |
-| EM interference | High | High | High | Zero (optical) | Zero (optical) |
-| Dechirp location | ZCU208 (digital) | ZCU208 rack (analog) | Antenna (analog) | Antenna (analog) | Antenna (analog/photonic) |
-| Mixing at antenna | None | None | Yes | Yes | No |
-| ENOB | ~7 bits | ~11–12 bits | ~11–12 bits | ~11–12 bits | ~11–12 bits |
-| Dynamic range | ~44 dB | ~68–74 dB | ~68–74 dB | ~68–74 dB | ~68–75 dB |
-| Virtual aperture | 64 elements | 64 elements | 64 elements | 512 elements | 512 elements |
-| Angular resolution | ~1.8° | ~1.8° | ~1.8° | ~0.22° | ~0.22° |
-| Swarm discrimination | <100 m | <100 m | <100 m | <780 m | <780 m |
-| System cost (8 ch) | ~$10k–$20k | ~$2k–$5k extra | ~$2k–$6k extra | ~$48k–$128k | ~$162k–$355k |
+Stage 2 multiplexes 8 antenna channels onto one fibre using SCM. The identical multiplexing principle works over coaxial cable — because at beat frequencies (0–80 MHz), coax is as capable a transport medium as fibre. This stage achieves 64 RX channels and full ENOB using nothing but coaxial cable, passive combiners, and cheap MMIC offset mixers.
+
+### Why Coax Works at Beat Frequencies
+
+After dechirping and SCM offsetting, the 8 channels from one antenna group sit in distinct frequency slots between 0 and 80 MHz. Coaxial cable loss at these frequencies is negligible:
+
+| Cable type | Loss at 80 MHz / 100 m |
+|---|---|
+| RG-174 (thin, flexible) | ~1.5 dB |
+| RG-58 | ~0.8 dB |
+| LMR-195 | ~0.5 dB |
+| LMR-400 | ~0.3 dB |
+
+Even the thinnest, cheapest coax carries 8 multiplexed beat signal channels over 100 m with negligible degradation. This is the same principle used in cable television infrastructure — dozens of channels multiplexed between 5 MHz and 1 GHz over standard coax. The composite signal from one group of 8 antennas is directly sampled by one ZCU208 ADC channel, with digital bandpass filters separating the 8 channels in the FPGA.
+
+### Architecture
+
+```
+ZCU208 DAC → TX chirp (5.8 GHz)
+                  │
+                  ├──→ TX chain
+                  │
+                  └──→ [1:8 RF splitter per group]
+                              │
+              (one reference coax per antenna, ~30–50 m max)
+
+At each antenna (×8 per group, ×8 groups = 64 total):
+  [ref coax] → [RF amp, if needed] → [LNA+mixer MMIC] ← [Antenna]
+                                            │
+                                       [LPF]
+                                            │
+                                    [SCM offset mixer] ← [crystal tone: n × 10 MHz]
+                                            │
+                               ─────────────────────────────
+                               shared with 7 others in group ↓
+                              [8-way passive RF combiner]
+                                            │
+                          ←─ one RG-58 return coax per group ─→ ZCU208 ADC
+```
+
+Eight groups × one return coax each = **8 coax return cables total** for 64 channels, directly into the 8 ZCU208 ADC inputs.
+
+### SCM Offset Tone Generation
+
+The 8 frequency offsets needed per group (e.g. 7.5, 17.5, 27.5 ... 77.5 MHz) are derived from a single cheap oscillator shared across the group. Options:
+
+- **Crystal oscillator + divider chain:** A 70 MHz TCXO divided down provides all 8 tones. Passive, cheap, no configuration required. ~$5–$15 for the oscillator, ~$2–$5 per divider stage.
+- **ADF4351 wideband PLL synthesiser:** Generates any frequency from 35 MHz to 4.4 GHz from a reference input. Configurable over SPI. ~$10 per chip. One chip per group can produce all 8 tones sequentially if time-division is acceptable, or 8 chips produce them simultaneously.
+- **ZCU208 DAC auxiliary output:** The ZCU208 has 8 DACs. With one DAC used for TX chirp generation, remaining DAC channels can generate the SCM offset tones digitally. No additional oscillator hardware required at all — tones are generated in the FPGA and output over short coax to the antenna groups. This is the most elegant option if DAC channels are available.
+
+### Reference Chirp Distribution
+
+Identical to Stage 1.5B — one coax per antenna, amplified at the antenna if runs exceed ~30 m. The only change from Stage 1.5B is that the beat signal return is now combined with 7 other channels before entering a single coax, rather than returning individually. The reference distribution problem is unchanged.
+
+If 8 separate reference coax runs per group (one per antenna) are undesirable, a local 1:8 splitter at the antenna group distributes from a single group-level reference coax run. This reduces the cable count from the ZCU208 from 8+8 = 16 per group down to 1+1 = 2 per group (one reference in, one return out), at the cost of ~9 dB splitting loss compensated by amplifiers at each antenna.
+
+### Bill of Materials (per 8-antenna group)
+
+| Component | Quantity | Unit cost | Total |
+|---|---|---|---|
+| LNA+mixer MMIC (e.g. HMC1190) | 8 | $30–$60 | $240–$480 |
+| LPF, 5–10 MHz | 8 | $5–$15 | $40–$120 |
+| SCM offset mixer (baseband MMIC) | 8 | $5–$15 | $40–$120 |
+| SCM tone oscillator (shared, per group) | 1 | $10–$30 | $10–$30 |
+| 8-way passive RF combiner (return) | 1 | $20–$60 | $20–$60 |
+| 1:8 RF splitter (reference, if group-level) | 1 | $20–$50 | $20–$50 |
+| RF amplifier for reference recovery | 8 | $5–$15 | $40–$120 |
+| RG-58 reference coax, 50 m | 1 | $30–$60 | $30–$60 |
+| RG-58 return coax, 50 m | 1 | $20–$40 | $20–$40 |
+| SMA connectors, passives, enclosure | — | — | $50–$150 |
+| **Per group total** | | | **$510–$1,230** |
+
+**8 groups total: ~$4,000–$10,000**
+
+Compare to Stage 2 (fibre SCM) which costs ~$48,000–$128,000 for the same 64 channels. Stage 1.75 is approximately **10–12× cheaper** for identical ENOB and channel count.
+
+### Limitations vs Stage 2
+
+**Physical separation is bounded.** The reference chirp at 5.8 GHz limits coax run length to ~50 m before amplification becomes necessary. Stage 2 removes this limit entirely with fibre.
+
+**EM susceptibility.** Coaxial cables pick up interference and radiate at the composite SCM frequencies (0–80 MHz). In a high-EMI environment (near high-power TX antennas, motor drives, or power electronics) this can degrade dynamic range. Good shielding and braided coax mitigate this but cannot eliminate it. Fibre is immune.
+
+**Cable bulk.** 8 reference runs + 8 return runs = 16 coaxial cables between ZCU208 and antenna groups, even with group-level reference splitting. Manageable in a lab or controlled deployment; less attractive for a field system.
+
+**Natural transition to Stage 2.** Moving from Stage 1.75 to Stage 2 requires no changes to the antenna hardware whatsoever. The LNA+mixer MMIC, LPF, and SCM offset mixer stay in place. The coax runs are replaced with fibre, and a VCSEL return modulator is added at the antenna group output. The ZCU208-side coax inputs are replaced with photodetectors. The antenna PCBs do not change.
 
 ---
 
-## 10. Staged Development Roadmap
+## 10. Architecture Comparison Summary
+
+| Property | Stage 1 | Stage 1.5A | Stage 1.5B | Stage 1.75 | Stage 2 | Stage 3 |
+|---|---|---|---|---|---|---|
+| RX channels | 8 | 8 | 8 | 64 | 64 | 64 |
+| ADC count | 8 | 8 | 8 | 8 | 8 | 8 |
+| Link medium | Coax (RF) | Coax (RF+beat) | Coax (ref+beat) | Coax (ref+SCM) | Fibre | Fibre |
+| Max separation | ~5 m | ~10 m | ~50 m | ~50 m | Unlimited | Unlimited |
+| EM interference | High | High | High | Medium | Zero | Zero |
+| Dechirp location | ZCU208 FPGA | ZCU208 rack | Antenna | Antenna | Antenna | Antenna/optical |
+| Mixing at antenna | None | None | Yes | Yes | Yes | No |
+| ENOB | ~7 bits | ~11–12 bits | ~11–12 bits | ~11–12 bits | ~11–12 bits | ~11–12 bits |
+| Dynamic range | ~44 dB | ~68–74 dB | ~68–74 dB | ~68–74 dB | ~68–74 dB | ~68–75 dB |
+| Virtual aperture | 64 el. | 64 el. | 64 el. | 512 el. | 512 el. | 512 el. |
+| Angular resolution | ~1.8° | ~1.8° | ~1.8° | ~0.22° | ~0.22° | ~0.22° |
+| Swarm discrim. | <100 m | <100 m | <100 m | <780 m | <780 m | <780 m |
+| System cost | ~$10k–$20k | +~$2k–$5k | +~$2k–$6k | +~$4k–$10k | ~$48k–$128k | ~$162k–$355k |
+
+---
+
+## 11. Staged Development Roadmap
 
 | Stage | Architecture | Channels | Key action | Cost estimate | ENOB |
 |---|---|---|---|---|---|
 | 1 | Direct RF sampling, digital dechirp | 8TX × 8RX | Validate signal processing chain on ZCU208 using DAC-generated chirp and digital conjugate multiply. Accept 7-bit dynamic range as known constraint during algorithm development. | ~$10k–$20k | ~7 bits |
 | 1.5A | Analog dechirp, mixer at ZCU208 rack | 8TX × 8RX | Add 8× RF mixer bank at ZCU208. Reference from ZCU208 DAC via short power divider. Immediately recovers 4–5 ENOB bits. Antennas must remain within ~10 m. | +~$2k–$5k | ~11–12 bits |
-| 1.5B | Analog dechirp, mixer at antenna, coax transport | 8TX × 8RX | Move mixers to antenna. Distribute reference chirp over coax. Beat signals return over thin coax. Enables antennas up to ~50 m from ZCU208. Antenna hardware is identical to Stage 2. | +~$2k–$6k | ~11–12 bits |
-| 2 | Analog dechirp + SCM + Radio over Fibre | 8TX × 64RX | Replace reference coax with optical fibre link. Add SCM return path. Scale to 64 RX channels using 8 ZCU208 ADC channels. Enables unlimited physical separation. | ~$48k–$128k | ~11–12 bits |
+| 1.5B | Analog dechirp, mixer at antenna, coax transport | 8TX × 8RX | Move mixers to antenna. Distribute reference chirp over coax. Beat signals return over thin coax. Enables antennas up to ~50 m from ZCU208. Antenna hardware is identical to all subsequent stages. | +~$2k–$6k | ~11–12 bits |
+| 1.75 | Analog dechirp + coaxial SCM multiplexing | 8TX × 64RX | Add SCM offset mixers and passive combiner at each antenna group. 8 antenna channels share one return coax per group. Scale to 64 RX channels using 8 ZCU208 ADCs. No photonics required. | +~$4k–$10k | ~11–12 bits |
+| 2 | Analog dechirp + SCM + Radio over Fibre | 8TX × 64RX | Replace reference coax with optical fibre link. Replace return coax with VCSEL + fibre. Enables unlimited physical separation and full EM immunity. Antenna hardware unchanged from Stage 1.75. | ~$48k–$128k | ~11–12 bits |
 | 3 | OFC photonic channelisation | 8TX × 64RX | Replace SCM mixer chain with EOM per antenna. Eliminates all RF mixing at antenna. Full photonic link from antenna to ADC. | ~$162k–$355k | ~11–12 bits |
-| 3+ | OFC + TFLN integrated modulators | 8TX × 64RX+ | TFLN photonic integrated circuits replace discrete EOMs. Cost approaches Stage 2. Architecture becomes extendable beyond 64 RX channels. | ~$70k–$148k | ~11–12 bits |
+| 3+ | OFC + TFLN integrated modulators | 8TX × 64RX+ | TFLN photonic integrated circuits replace discrete EOMs. Cost approaches Stage 2. Architecture extendable beyond 64 RX. | ~$70k–$148k | ~11–12 bits |
 
-The most important single step in this progression is the transition from Stage 1 to Stage 1.5 — it recovers the majority of the available dynamic range with minimal cost and complexity, using only the ZCU208's existing DAC output and a handful of MMIC components. Every subsequent stage builds on this foundation without changing the antenna-side dechirp principle.
+The most important single step is Stage 1 → Stage 1.5, which recovers ~25 dB of dynamic range for minimal cost. Stage 1.75 is the most cost-effective path to 512-element virtual aperture and swarm discrimination capability, with no photonics required. Stage 2 is the transition point when physical separation beyond 50 m or EM cleanliness becomes a hard requirement.
 
 ---
 
-## 11. Key References and Technology Suppliers
+## 12. Key References and Technology Suppliers
 
 **Photonic channelisation:**
 - Cohen, I. and Eldar, Y.C. — Sub-Nyquist MIMO radar (Weizmann Institute X-band prototype, 8TX/10RX, FDM + compressed sensing)
